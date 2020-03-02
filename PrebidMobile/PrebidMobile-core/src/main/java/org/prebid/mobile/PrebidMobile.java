@@ -20,6 +20,7 @@ import android.content.Context;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 
+import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -118,5 +119,25 @@ public class PrebidMobile {
     @NonNull
     static Map<String, String> getStoredBidResponses() {
         return storedBidResponses;
+    }
+
+    public static boolean startCacheServer() {
+        try {
+            CacheServer.getInstance().start();
+        } catch (IOException e) {
+            LogUtil.e("Couldn't start cache server");
+            return false;
+        }
+        return true;
+    }
+
+    public static boolean stopCacheServer() {
+        try {
+            CacheServer.getInstance().stop();
+        } catch (IOException e) {
+            LogUtil.e("Couldn't stop cache server or it has already stopped");
+            return false;
+        }
+        return true;
     }
 }

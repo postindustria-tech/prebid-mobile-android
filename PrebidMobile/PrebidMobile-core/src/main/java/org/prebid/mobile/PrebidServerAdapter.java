@@ -294,6 +294,9 @@ class PrebidServerAdapter implements DemandAdapter {
                                             String key = (String) it.next();
                                             if (key.equals("hb_cache_id")) {
                                                 containTopBid = true;
+                                                String adm = bid.getString("adm");
+                                                String cacheId = hb_key_values.getString("hb_cache_id");
+                                                cacheAdm(cacheId, adm);
                                             }
                                             if (key.startsWith("hb_cache_id")) {
                                                 containBids = true;
@@ -325,6 +328,10 @@ class PrebidServerAdapter implements DemandAdapter {
             }
 
             removeThisTask();
+        }
+
+        private void cacheAdm(String cacheId, String adm) {
+            CacheServer.getInstance().addCache(cacheId, adm);
         }
 
         @Override

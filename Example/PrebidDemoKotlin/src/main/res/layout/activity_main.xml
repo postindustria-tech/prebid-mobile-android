@@ -121,5 +121,13 @@
         android:text="@string/buttonText"
         android:id="@+id/showAd"
         android:onClick="showAd"/>
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:text="Show cache demo"
+        android:id="@+id/showCacheDemo"
+        android:onClick="showCacheDemo"/>
+
 
 </LinearLayout>

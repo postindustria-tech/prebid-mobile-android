@@ -31,6 +31,7 @@ object Constants {
     internal val PBS_CONFIG_ID_INTERSTITIAL_APPNEXUS = "625c6125-f19e-4d5b-95c5-55501526b2a4"
     // MoPub ad unit ids
     internal val MOPUB_BANNER_ADUNIT_ID_300x250_APPNEXUS = "a935eac11acd416f92640411234fbba6"
+    internal val MOPUB_BANNER_ADUNIT_ID_300x250_APPNEXUS_CACHE = "ce9b265b647041758d05feaf2dd9cf86"
     internal val MOPUB_BANNER_ADUNIT_ID_320x50_APPNEXUS = "9dbccb87ab4d4a178450c0bc986b4571"
     internal val MOPUB_INTERSTITIAL_ADUNIT_ID_APPNEXUS = "2829868d308643edbec0795977f17437"
     // DFP ad unit ids
@@ -48,7 +49,7 @@ object Constants {
     internal val MOPUB_INTERSTITIAL_ADUNIT_ID_RUBICON = ""
     // DFP ad unit ids
     internal val DFP_BANNER_ADUNIT_ID_300x250_RUBICON =
-        "/5300653/test_adunit_pavliuchyk_300x250_prebid-server.rubiconproject.com_puc"
+            "/5300653/test_adunit_pavliuchyk_300x250_prebid-server.rubiconproject.com_puc"
     internal val DFP_INTERSTITIAL_ADUNIT_ID_RUBICON = ""
 
     internal var PBS_ACCOUNT_ID = PBS_ACCOUNT_ID_APPNEXUS
@@ -57,6 +58,7 @@ object Constants {
     internal var PBS_CONFIG_ID_INTERSTITIAL = PBS_CONFIG_ID_INTERSTITIAL_APPNEXUS
     // MoPub ad unit ids
     internal var MOPUB_BANNER_ADUNIT_ID_300x250 = MOPUB_BANNER_ADUNIT_ID_300x250_APPNEXUS
+    internal var MOPUB_BANNER_ADUNIT_ID_300x250_CACHE = MOPUB_BANNER_ADUNIT_ID_300x250_APPNEXUS_CACHE
     internal var MOPUB_BANNER_ADUNIT_ID_320x50 = MOPUB_BANNER_ADUNIT_ID_320x50_APPNEXUS
     internal var MOPUB_INTERSTITIAL_ADUNIT_ID = MOPUB_INTERSTITIAL_ADUNIT_ID_APPNEXUS
     // DFP ad unit ids

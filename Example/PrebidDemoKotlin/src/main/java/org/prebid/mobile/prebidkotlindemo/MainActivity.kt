@@ -126,5 +126,10 @@ class MainActivity : AppCompatActivity() {
         }
         startActivity(demoActivityIntent)
     }
+
+    fun showCacheDemo(view: View) {
+        val demoActivityIntent = Intent(this, CacheDemoActivity::class.java)
+        startActivity(demoActivityIntent)
+    }
 }
 

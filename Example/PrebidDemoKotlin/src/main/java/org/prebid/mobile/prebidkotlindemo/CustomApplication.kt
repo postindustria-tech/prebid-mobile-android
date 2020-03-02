@@ -42,6 +42,7 @@ class CustomApplication : Application() {
         PrebidMobile.setPrebidServerAccountId(Constants.PBS_ACCOUNT_ID)
         PrebidMobile.setPrebidServerHost(Host.APPNEXUS)
         PrebidMobile.setShareGeoLocation(true)
+        PrebidMobile.startCacheServer()
         PrebidMobile.setApplicationContext(applicationContext)
         //endregion
         if (BuildConfig.DEBUG) {
