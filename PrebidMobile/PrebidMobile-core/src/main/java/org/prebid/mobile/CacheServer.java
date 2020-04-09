@@ -16,13 +16,23 @@
 
 package org.prebid.mobile;
 
+import org.prebid.mobile.core.R;
+
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
+import java.security.KeyStore;
 import java.util.HashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+
+import javax.net.ssl.KeyManager;
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLServerSocketFactory;
+import javax.net.ssl.TrustManagerFactory;
 
 class CacheServer {
 
@@ -69,6 +79,42 @@ class CacheServer {
         return cacheServer;
     }
 
+    private static SSLServerSocketFactory makeSSLSocketFactory(int keystoreResource, char[] passphrase) throws IOException {
+        try {
+            KeyStore keystore = KeyStore.getInstance(KeyStore.getDefaultType());
+            InputStream keystoreStream = PrebidMobile.getApplicationContext().getResources().openRawResource(keystoreResource);
+
+            keystore.load(keystoreStream, passphrase);
+            KeyManagerFactory keyManagerFactory = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+            keyManagerFactory.init(keystore, passphrase);
+            return makeSSLSocketFactory(keystore, keyManagerFactory);
+        } catch (Exception e) {
+            throw new IOException(e.getMessage());
+        }
+    }
+
+    private static SSLServerSocketFactory makeSSLSocketFactory(KeyStore loadedKeyStore, KeyManagerFactory loadedKeyFactory) throws IOException {
+        try {
+            return makeSSLSocketFactory(loadedKeyStore, loadedKeyFactory.getKeyManagers());
+        } catch (Exception e) {
+            throw new IOException(e.getMessage());
+        }
+    }
+
+    private static SSLServerSocketFactory makeSSLSocketFactory(KeyStore loadedKeyStore, KeyManager[] keyManagers) throws IOException {
+        SSLServerSocketFactory res = null;
+        try {
+            TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+            trustManagerFactory.init(loadedKeyStore);
+            SSLContext ctx = SSLContext.getInstance("TLS");
+            ctx.init(keyManagers, trustManagerFactory.getTrustManagers(), null);
+            res = ctx.getServerSocketFactory();
+        } catch (Exception e) {
+            throw new IOException(e.getMessage());
+        }
+        return res;
+    }
+
     /**
      * Stops {@link CacheServer}
      *
@@ -111,7 +157,7 @@ class CacheServer {
      * @throws IOException when server fails to start
      */
     void start(int port) throws IOException {
-        this.socket = new ServerSocket(port);
+        this.socket = makeSSLSocketFactory(R.raw.keystore, "pi12345".toCharArray()).createServerSocket(port);
         this.socketThread.start();
     }
 }
