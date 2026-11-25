@@ -113,7 +113,7 @@ public class CreativeModelsMakerVast extends CreativeModelsMaker {
             final String vastClickThroughUrl = rootVastParser.getClickThroughUrl(rootVastParser, 0);
             final String videoDuration = latestVastWrapperParser.getVideoDuration(latestVastWrapperParser, 0);
             final String skipOffset = latestVastWrapperParser.getSkipOffset(latestVastWrapperParser, 0);
-            final AdVerifications adVerifications = rootVastParser.getAdVerification(latestVastWrapperParser, 0);
+            final AdVerifications adVerifications = rootVastParser.getAdVerification(rootVastParser, 0);
 
             checkVideoDuration(Utils.getMsFrom(videoDuration));
 

@@ -32,6 +32,7 @@ public class Wrapper extends VASTParserBase {
     private final static String VAST_ERROR = "Error";
     private final static String VAST_CREATIVES = "Creatives";
     private final static String VAST_EXTENSIONS = "Extensions";
+    private final static String VAST_AD_VERIFICATIONS = "AdVerifications";
 
     private String followAdditionalWrappers;
     private String allowMultipleAds;
@@ -44,6 +45,7 @@ public class Wrapper extends VASTParserBase {
     //https://github.com/InteractiveAdvertisingBureau/vast/blob/master/vast4.xsd#L1411
     private ArrayList<Creative> creatives;
     private Extensions extensions;
+    private AdVerifications adVerifications;
 
     public Wrapper(XmlPullParser p) throws XmlPullParserException, IOException {
 
@@ -91,6 +93,11 @@ public class Wrapper extends VASTParserBase {
                 extensions = new Extensions(p);
                 p.require(XmlPullParser.END_TAG, null, VAST_EXTENSIONS);
             }
+            else if (name != null && name.equals(VAST_AD_VERIFICATIONS)) {
+                p.require(XmlPullParser.START_TAG, null, VAST_AD_VERIFICATIONS);
+                adVerifications = new AdVerifications(p);
+                p.require(XmlPullParser.END_TAG, null, VAST_AD_VERIFICATIONS);
+            }
             else {
                 skip(p);
             }
@@ -134,5 +141,9 @@ public class Wrapper extends VASTParserBase {
 
     public Extensions getExtensions() {
         return extensions;
+    }
+
+    public AdVerifications getAdVerifications() {
+        return adVerifications;
     }
 }

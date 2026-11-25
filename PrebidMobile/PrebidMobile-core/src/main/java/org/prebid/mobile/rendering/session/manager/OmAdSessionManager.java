@@ -17,6 +17,7 @@
 package org.prebid.mobile.rendering.session.manager;
 
 import android.content.Context;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
 import android.webkit.WebView;
@@ -73,6 +74,8 @@ public class OmAdSessionManager {
 
     private Partner partner;
     private AdSession adSession;
+    // Set when a video ad carries no verification scripts: measurement is skipped on purpose.
+    private boolean measurementSkipped;
 
     private OmAdSessionManager(JSLibraryManager instance) {
         jsLibraryManager = instance;
@@ -127,6 +130,14 @@ public class OmAdSessionManager {
      * @param adVerifications VAST AdVerification node
      */
     public void initVideoAdSession(AdVerifications adVerifications, String contentUrl) {
+        if (adVerifications == null || adVerifications.getVerifications() == null
+            || adVerifications.getVerifications().isEmpty()) {
+            LogUtil.debug(TAG, "No AdVerifications in VAST. Skipping Open Measurement session.");
+            measurementSkipped = true;
+            return;
+        }
+        measurementSkipped = false;
+
         Owner owner = Owner.NATIVE;
         AdSessionConfiguration adSessionConfiguration = createAdSessionConfiguration(CreativeType.VIDEO,
                                                                                      ImpressionType.ONE_PIXEL,
@@ -143,7 +154,7 @@ public class OmAdSessionManager {
      */
     public void displayAdLoaded() {
         if (adEvents == null) {
-            LogUtil.error(TAG, "Failed to register displayAdLoaded. AdEvent is null");
+            logNoSession("Failed to register displayAdLoaded. AdEvent is null");
             return;
         }
         adEvents.loaded();
@@ -156,7 +167,7 @@ public class OmAdSessionManager {
      */
     public void nonSkippableStandaloneVideoAdLoaded(final boolean isAutoPlay) {
         if (adEvents == null) {
-            LogUtil.error(TAG, "Failed to register videoAdLoaded. adEvent is null");
+            logNoSession("Failed to register videoAdLoaded. adEvent is null");
             return;
         }
         try {
@@ -177,7 +188,7 @@ public class OmAdSessionManager {
      */
     public void videoAdStarted(final float duration, final float videoPlayerVolume) {
         if (mediaEvents == null) {
-            LogUtil.error(TAG, "Failed to register videoAdStarted. videoAdEvent is null");
+            logNoSession("Failed to register videoAdStarted. videoAdEvent is null");
             return;
         }
         mediaEvents.start(duration, videoPlayerVolume);
@@ -188,7 +199,7 @@ public class OmAdSessionManager {
      */
     public void registerImpression() {
         if (adEvents == null) {
-            LogUtil.error(TAG, "Failed to registerImpression: AdEvent is null");
+            logNoSession("Failed to registerImpression: AdEvent is null");
             return;
         }
         try {
@@ -206,7 +217,7 @@ public class OmAdSessionManager {
      */
     public void trackVolumeChange(float volume) {
         if (mediaEvents == null) {
-            LogUtil.error(TAG, "Failed to trackVolumeChange. videoAdEvent is null");
+            logNoSession("Failed to trackVolumeChange. videoAdEvent is null");
             return;
         }
         mediaEvents.volumeChange(volume);
@@ -237,7 +248,7 @@ public class OmAdSessionManager {
      */
     public void trackAdVideoEvent(VideoAdEvent.Event adEvent) {
         if (mediaEvents == null) {
-            LogUtil.error(TAG, "Failed to trackAdVideoEvent. videoAdEvent is null");
+            logNoSession("Failed to trackAdVideoEvent. videoAdEvent is null");
             return;
         }
         switch (adEvent) {
@@ -305,7 +316,7 @@ public class OmAdSessionManager {
      */
     public void trackPlayerStateChangeEvent(InternalPlayerState playerState) {
         if (mediaEvents == null) {
-            LogUtil.error(TAG, "Failed to track PlayerStateChangeEvent. videoAdEvent is null");
+            logNoSession("Failed to track PlayerStateChangeEvent. videoAdEvent is null");
             return;
         }
         mediaEvents.playerStateChange(OmModelMapper.mapToPlayerState(playerState));
@@ -316,7 +327,7 @@ public class OmAdSessionManager {
      */
     public void startAdSession() {
         if (adSession == null) {
-            LogUtil.error(TAG, "Failed to startAdSession. adSession is null");
+            logNoSession("Failed to startAdSession. adSession is null");
             return;
         }
         adSession.start();
@@ -327,7 +338,7 @@ public class OmAdSessionManager {
      */
     public void stopAdSession() {
         if (adSession == null) {
-            LogUtil.error(TAG, "Failed to stopAdSession. adSession is null");
+            logNoSession("Failed to stopAdSession. adSession is null");
             return;
         }
         adSession.finish();
@@ -342,7 +353,7 @@ public class OmAdSessionManager {
      */
     public void registerAdView(View adView) {
         if (adSession == null) {
-            LogUtil.error(TAG, "Failed to registerAdView. adSession is null");
+            logNoSession("Failed to registerAdView. adSession is null");
             return;
         }
         try {
@@ -359,7 +370,7 @@ public class OmAdSessionManager {
      */
     public void addObstruction(InternalFriendlyObstruction friendlyObstruction) {
         if (adSession == null) {
-            LogUtil.error(TAG, "Failed to addObstruction: adSession is null");
+            logNoSession("Failed to addObstruction: adSession is null");
             return;
         }
         try {
@@ -380,7 +391,7 @@ public class OmAdSessionManager {
 
     private void trackAdUserInteractionEvent(InteractionType type) {
         if (mediaEvents == null) {
-            LogUtil.error(TAG, "Failed to register adUserInteractionEvent with type: " + type);
+            logNoSession("Failed to register adUserInteractionEvent with type: " + type);
             return;
         }
 
@@ -400,6 +411,15 @@ public class OmAdSessionManager {
         catch (IllegalArgumentException e) {
             LogUtil.error(TAG, "Failure createAdSessionConfiguration: " + Log.getStackTraceString(e));
             return null;
+        }
+    }
+
+    private void logNoSession(String message) {
+        if (measurementSkipped) {
+            LogUtil.debug(TAG, message + ". Open Measurement was skipped for this ad.");
+        }
+        else {
+            LogUtil.error(TAG, message);
         }
     }
 
@@ -528,14 +548,9 @@ public class OmAdSessionManager {
             LogUtil.error(TAG, "Failure createAdSessionContext: " + Log.getStackTraceString(e));
             return null;
         }
-        catch (MalformedURLException e) {
-            LogUtil.error(TAG, "Failure createAdSessionContext: " + Log.getStackTraceString(e));
-            return null;
-        }
     }
 
-    private List<VerificationScriptResource> createVerificationScriptResources(AdVerifications adVerifications)
-    throws MalformedURLException, IllegalArgumentException {
+    private List<VerificationScriptResource> createVerificationScriptResources(AdVerifications adVerifications) {
         if (adVerifications == null || adVerifications.getVerifications() == null) {
             return null;
         }
@@ -543,14 +558,25 @@ public class OmAdSessionManager {
         List<Verification> verificationList = adVerifications.getVerifications();
 
         for (Verification verification : verificationList) {
-            final URL url = new URL(verification.getJsResource());
-            final String vendorKey = verification.getVendor();
-            final String params = verification.getVerificationParameters();
+            // One unusable entry must not disable measurement for the other vendors of the ad.
+            try {
+                final URL url = new URL(verification.getJsResource());
+                final String vendorKey = verification.getVendor();
+                final String params = verification.getVerificationParameters();
 
-            VerificationScriptResource verificationScriptResource =
-                VerificationScriptResource
-                    .createVerificationScriptResourceWithParameters(vendorKey, url, params);
-            verificationScriptResources.add(verificationScriptResource);
+                // VerificationParameters is optional in VAST, but OM SDK rejects an empty vendor or parameters.
+                if (TextUtils.isEmpty(vendorKey) || TextUtils.isEmpty(params)) {
+                    verificationScriptResources.add(
+                        VerificationScriptResource.createVerificationScriptResourceWithoutParameters(url));
+                }
+                else {
+                    verificationScriptResources.add(
+                        VerificationScriptResource.createVerificationScriptResourceWithParameters(vendorKey, url, params));
+                }
+            }
+            catch (MalformedURLException | IllegalArgumentException e) {
+                LogUtil.error(TAG, "Skipping OM verification script: " + e.getMessage());
+            }
         }
 
         return verificationScriptResources;
