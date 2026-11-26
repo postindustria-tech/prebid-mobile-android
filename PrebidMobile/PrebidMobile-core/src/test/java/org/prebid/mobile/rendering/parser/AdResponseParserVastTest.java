@@ -961,4 +961,107 @@ public class AdResponseParserVastTest {
         when(mockInLine.getCreatives()).thenReturn(creatives);
         return mockInLine;
     }
+
+    private static String verificationXml(String vendor, String url) {
+        return "<AdVerifications><Verification vendor=\"" + vendor + "\">"
+               + "<JavaScriptResource apiFramework=\"omid\"><![CDATA[" + url + "]]></JavaScriptResource>"
+               + "<VerificationParameters><![CDATA[p=1]]></VerificationParameters>"
+               + "</Verification></AdVerifications>";
+    }
+
+    private static AdResponseParserVastHelper wrapperParser(String wrapperChildren) throws VastParseError {
+        return new AdResponseParserVastHelper("<VAST version=\"4.2\"><Ad id=\"w\"><Wrapper>"
+                                              + "<AdSystem>wrapper</AdSystem>"
+                                              + "<VASTAdTagURI><![CDATA[https://example.com/vast]]></VASTAdTagURI>"
+                                              + wrapperChildren
+                                              + "</Wrapper></Ad></VAST>");
+    }
+
+    private static AdResponseParserVastHelper inlineParser(String inlineChildren) throws VastParseError {
+        return new AdResponseParserVastHelper("<VAST version=\"4.2\"><Ad id=\"i\"><InLine>"
+                                              + "<AdSystem>inline</AdSystem>"
+                                              + inlineChildren
+                                              + "</InLine></Ad></VAST>");
+    }
+
+    @Test
+    public void testGetAdVerificationMergesWrapperAndInline() throws Exception {
+        AdResponseParserVastHelper root = wrapperParser(verificationXml("wrapperVendor", "https://wrapper.example.com/omid.js"));
+        AdResponseParserVastHelper middle = wrapperParser("<Extensions><Extension type=\"AdVerifications\">"
+                                                        + verificationXml("extensionVendor", "https://extension.example.com/omid.js")
+                                                        + "</Extension></Extensions>");
+        AdResponseParserVastHelper inline = new AdResponseParserVastHelper(ResourceUtils.convertResourceToString(SAMPLE_GOOD_VAST));
+        root.setWrapper(middle);
+        middle.setWrapper(inline);
+
+        ArrayList<Verification> verifications = root.getAdVerification(root, 0).getVerifications();
+
+        assertEquals(4, verifications.size());
+        assertEquals("wrapperVendor", verifications.get(0).getVendor());
+        assertEquals("https://wrapper.example.com/omid.js", verifications.get(0).getJsResource());
+        assertEquals("extensionVendor", verifications.get(1).getVendor());
+        assertEquals("Prebid1", verifications.get(2).getVendor());
+        assertEquals("Prebid2", verifications.get(3).getVendor());
+    }
+
+    @Test
+    public void testGetAdVerificationWrapperOnly() throws Exception {
+        AdResponseParserVastHelper root = wrapperParser(verificationXml("wrapperVendor", "https://wrapper.example.com/omid.js"));
+        root.setWrapper(inlineParser(""));
+
+        ArrayList<Verification> verifications = root.getAdVerification(root, 0).getVerifications();
+
+        assertEquals(1, verifications.size());
+        assertEquals("wrapperVendor", verifications.get(0).getVendor());
+    }
+
+    @Test
+    public void testGetAdVerificationSkipsDuplicates() throws Exception {
+        String same = verificationXml("vendor", "https://vendor.example.com/omid.js");
+        AdResponseParserVastHelper root = wrapperParser(same);
+        root.setWrapper(inlineParser(same));
+
+        assertEquals(1, root.getAdVerification(root, 0).getVerifications().size());
+    }
+
+    @Test
+    public void testGetAdVerificationInlineExtensionOnly() throws Exception {
+        AdResponseParserVastHelper vast = new AdResponseParserVastHelper(ResourceUtils.convertResourceToString(ADVERIFICATIONS_IN_EXTENSIONS));
+
+        AdVerifications adVerifications = vast.getAdVerification(vast, 0);
+
+        assertEquals(1, adVerifications.getVerifications().size());
+        assertEquals("prebid", adVerifications.getVerifications().get(0).getVendor());
+    }
+
+    @Test
+    public void testGetAdVerificationEmptyNodeDoesNotHideExtension() throws Exception {
+        AdResponseParserVastHelper vast = inlineParser("<AdVerifications></AdVerifications>"
+                                                       + "<Extensions>"
+                                                       + "<Extension type=\"AdVerifications\"><AdVerifications></AdVerifications></Extension>"
+                                                       + "<Extension type=\"AdVerifications\">"
+                                                       + verificationXml("extensionVendor", "https://extension.example.com/omid.js")
+                                                       + "</Extension></Extensions>");
+
+        ArrayList<Verification> verifications = vast.getAdVerification(vast, 0).getVerifications();
+
+        assertEquals(1, verifications.size());
+        assertEquals("extensionVendor", verifications.get(0).getVendor());
+    }
+
+    @Test
+    public void testGetAdVerificationEmptyWrapperNodeIsIgnored() throws Exception {
+        AdResponseParserVastHelper root = wrapperParser("<AdVerifications></AdVerifications>");
+        root.setWrapper(inlineParser(""));
+
+        assertNull(root.getAdVerification(root, 0));
+    }
+
+    @Test
+    public void testGetAdVerificationNoneInChain() throws Exception {
+        AdResponseParserVastHelper root = wrapperParser("");
+        root.setWrapper(inlineParser(""));
+
+        assertNull(root.getAdVerification(root, 0));
+    }
 }

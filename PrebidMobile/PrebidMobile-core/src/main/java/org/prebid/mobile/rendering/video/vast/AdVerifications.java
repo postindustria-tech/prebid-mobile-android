@@ -46,6 +46,10 @@ public class AdVerifications extends VASTParserBase {
         }
     }
 
+    public AdVerifications(ArrayList<Verification> verifications) {
+        this.verifications = verifications;
+    }
+
     public ArrayList<Verification> getVerifications() {
         return verifications;
     }

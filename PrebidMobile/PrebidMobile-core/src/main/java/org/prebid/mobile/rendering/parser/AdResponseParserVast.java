@@ -34,18 +34,22 @@ import org.prebid.mobile.rendering.video.vast.ClickTracking;
 import org.prebid.mobile.rendering.video.vast.Companion;
 import org.prebid.mobile.rendering.video.vast.Creative;
 import org.prebid.mobile.rendering.video.vast.Extension;
+import org.prebid.mobile.rendering.video.vast.Extensions;
 import org.prebid.mobile.rendering.video.vast.Impression;
 import org.prebid.mobile.rendering.video.vast.InLine;
 import org.prebid.mobile.rendering.video.vast.MediaFile;
 import org.prebid.mobile.rendering.video.vast.VAST;
+import org.prebid.mobile.rendering.video.vast.Verification;
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
 
 import java.io.IOException;
 import java.io.StringReader;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 
 public class AdResponseParserVast extends AdResponseParserBase {
 
@@ -435,37 +439,77 @@ public class AdResponseParserVast extends AdResponseParserBase {
         return null;
     }
 
+    /**
+     * Collects the verifications of the given VAST and of every VAST it wraps, so that scripts
+     * added by intermediaries in Wrapper ads are measured together with those of the InLine ad.
+     *
+     * @return null if no ad in the chain has verifications
+     */
     public AdVerifications getAdVerification(AdResponseParserVast parserVast, int index) {
+        ArrayList<Verification> merged = new ArrayList<>();
+        Set<String> seen = new HashSet<>();
 
-        Ad ad = parserVast.vast.getAds().get(index);
-
-        if (ad == null || ad.getInline() == null) {
-            return null;
-        }
-
-        // The Vast Spec declares that there will be either 0 or 1 adVerifications nodes.
-        // Return the first one discovered.
-
-        // The Inline object itself can have an adVerifications node
-        if (ad.getInline().getAdVerifications() != null) {
-            return ad.getInline().getAdVerifications();
-        }
-
-        // Walk Extensions and look for adVerifications nodes
-        if (ad.getInline().getExtensions() == null) {
-            return null;
-        }
-
-        ArrayList<Extension> extensions = ad.getInline().getExtensions().getExtensions();
-        if (extensions != null) {
-            for (Extension extension : extensions) {
-                if (extension.getAdVerifications() != null) {
-                    return extension.getAdVerifications();
+        for (AdResponseParserVast parser = parserVast; parser != null; parser = parser.wrappedVASTXml) {
+            AdVerifications adVerifications = getOwnAdVerifications(parser, index);
+            if (adVerifications == null || adVerifications.getVerifications() == null) {
+                continue;
+            }
+            for (Verification verification : adVerifications.getVerifications()) {
+                // The same script is often repeated along the chain; running it twice would double count.
+                String key = verification.getVendor() + '|' + verification.getJsResource()
+                             + '|' + verification.getVerificationParameters();
+                if (seen.add(key)) {
+                    merged.add(verification);
                 }
             }
         }
 
+        return merged.isEmpty() ? null : new AdVerifications(merged);
+    }
+
+    private static AdVerifications getOwnAdVerifications(AdResponseParserVast parserVast, int index) {
+        ArrayList<Ad> ads = parserVast.vast != null ? parserVast.vast.getAds() : null;
+        if (ads == null || index >= ads.size() || ads.get(index) == null) {
+            return null;
+        }
+        Ad ad = ads.get(index);
+
+        AdVerifications adVerifications;
+        Extensions extensions;
+        if (ad.getInline() != null) {
+            adVerifications = ad.getInline().getAdVerifications();
+            extensions = ad.getInline().getExtensions();
+        }
+        else if (ad.getWrapper() != null) {
+            adVerifications = ad.getWrapper().getAdVerifications();
+            extensions = ad.getWrapper().getExtensions();
+        }
+        else {
+            return null;
+        }
+
+        // VAST 4.1+ node; when present, an Extension usually only repeats it for older players.
+        // An empty node does not count, so that it does not hide an Extension with scripts.
+        if (hasVerifications(adVerifications)) {
+            return adVerifications;
+        }
+
+        if (extensions == null || extensions.getExtensions() == null) {
+            return null;
+        }
+        for (Extension extension : extensions.getExtensions()) {
+            if (hasVerifications(extension.getAdVerifications())) {
+                return extension.getAdVerifications();
+            }
+        }
+
         return null;
+    }
+
+    private static boolean hasVerifications(AdVerifications adVerifications) {
+        return adVerifications != null
+               && adVerifications.getVerifications() != null
+               && !adVerifications.getVerifications().isEmpty();
     }
 
     /**
