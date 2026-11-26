@@ -489,7 +489,8 @@ public class AdResponseParserVast extends AdResponseParserBase {
         }
 
         // VAST 4.1+ node; when present, an Extension usually only repeats it for older players.
-        if (adVerifications != null) {
+        // An empty node does not count, so that it does not hide an Extension with scripts.
+        if (hasVerifications(adVerifications)) {
             return adVerifications;
         }
 
@@ -497,12 +498,18 @@ public class AdResponseParserVast extends AdResponseParserBase {
             return null;
         }
         for (Extension extension : extensions.getExtensions()) {
-            if (extension.getAdVerifications() != null) {
+            if (hasVerifications(extension.getAdVerifications())) {
                 return extension.getAdVerifications();
             }
         }
 
         return null;
+    }
+
+    private static boolean hasVerifications(AdVerifications adVerifications) {
+        return adVerifications != null
+               && adVerifications.getVerifications() != null
+               && !adVerifications.getVerifications().isEmpty();
     }
 
     /**

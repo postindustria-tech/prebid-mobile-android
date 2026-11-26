@@ -1035,6 +1035,29 @@ public class AdResponseParserVastTest {
     }
 
     @Test
+    public void testGetAdVerificationEmptyNodeDoesNotHideExtension() throws Exception {
+        AdResponseParserVastHelper vast = inlineParser("<AdVerifications></AdVerifications>"
+                                                       + "<Extensions>"
+                                                       + "<Extension type=\"AdVerifications\"><AdVerifications></AdVerifications></Extension>"
+                                                       + "<Extension type=\"AdVerifications\">"
+                                                       + verificationXml("extensionVendor", "https://extension.example.com/omid.js")
+                                                       + "</Extension></Extensions>");
+
+        ArrayList<Verification> verifications = vast.getAdVerification(vast, 0).getVerifications();
+
+        assertEquals(1, verifications.size());
+        assertEquals("extensionVendor", verifications.get(0).getVendor());
+    }
+
+    @Test
+    public void testGetAdVerificationEmptyWrapperNodeIsIgnored() throws Exception {
+        AdResponseParserVastHelper root = wrapperParser("<AdVerifications></AdVerifications>");
+        root.setWrapper(inlineParser(""));
+
+        assertNull(root.getAdVerification(root, 0));
+    }
+
+    @Test
     public void testGetAdVerificationNoneInChain() throws Exception {
         AdResponseParserVastHelper root = wrapperParser("");
         root.setWrapper(inlineParser(""));

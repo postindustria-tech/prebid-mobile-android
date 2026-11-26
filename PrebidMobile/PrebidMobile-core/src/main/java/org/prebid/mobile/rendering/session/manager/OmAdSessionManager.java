@@ -130,9 +130,10 @@ public class OmAdSessionManager {
      * @param adVerifications VAST AdVerification node
      */
     public void initVideoAdSession(AdVerifications adVerifications, String contentUrl) {
-        if (adVerifications == null || adVerifications.getVerifications() == null
-            || adVerifications.getVerifications().isEmpty()) {
-            LogUtil.debug(TAG, "No AdVerifications in VAST. Skipping Open Measurement session.");
+        // Checked after the unusable scripts are dropped: a session without any script measures nothing.
+        List<VerificationScriptResource> verificationScriptResources = createVerificationScriptResources(adVerifications);
+        if (verificationScriptResources == null || verificationScriptResources.isEmpty()) {
+            LogUtil.debug(TAG, "No usable AdVerifications in VAST. Skipping Open Measurement session.");
             measurementSkipped = true;
             return;
         }
@@ -143,7 +144,7 @@ public class OmAdSessionManager {
                                                                                      ImpressionType.ONE_PIXEL,
                                                                                      owner,
                                                                                      owner);
-        AdSessionContext adSessionContext = createAdSessionContext(adVerifications, contentUrl);
+        AdSessionContext adSessionContext = createAdSessionContext(verificationScriptResources, contentUrl);
         initAdSession(adSessionConfiguration, adSessionContext);
         initAdEvents();
         initMediaAdEvents();
@@ -528,28 +529,6 @@ public class OmAdSessionManager {
         }
     }
 
-    @Nullable
-    private AdSessionContext createAdSessionContext(AdVerifications adVerifications, String contentUrl) {
-        if (adVerifications == null) {
-            LogUtil.error(TAG, "Unable to createAdSessionContext. AdVerification is null");
-            return null;
-        }
-
-        // Log all jsResources being used
-        for (Verification verification : adVerifications.getVerifications()) {
-            LogUtil.debug(TAG, "Using jsResource: " + verification.getJsResource());
-        }
-
-        try {
-            List<VerificationScriptResource> verificationScriptResources = createVerificationScriptResources(adVerifications);
-            return createAdSessionContext(verificationScriptResources, contentUrl);
-        }
-        catch (IllegalArgumentException e) {
-            LogUtil.error(TAG, "Failure createAdSessionContext: " + Log.getStackTraceString(e));
-            return null;
-        }
-    }
-
     private List<VerificationScriptResource> createVerificationScriptResources(AdVerifications adVerifications) {
         if (adVerifications == null || adVerifications.getVerifications() == null) {
             return null;
@@ -573,6 +552,7 @@ public class OmAdSessionManager {
                     verificationScriptResources.add(
                         VerificationScriptResource.createVerificationScriptResourceWithParameters(vendorKey, url, params));
                 }
+                LogUtil.debug(TAG, "Using jsResource: " + verification.getJsResource());
             }
             catch (MalformedURLException | IllegalArgumentException e) {
                 LogUtil.error(TAG, "Skipping OM verification script: " + e.getMessage());
